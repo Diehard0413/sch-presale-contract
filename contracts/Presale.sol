@@ -56,13 +56,15 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         _;
     }
 
-    function initialize(address _schAddr, address _saleAddr) public initializer {
+    function initialize(address _schAddr, address _saleAddr, address admin) public initializer {
         __Ownable_init();
+         __ReentrancyGuard_init();
+        __AccessControl_init();
 
         schAddress = IERC20Metadata(_schAddr);
         saleAddress = IERC20Metadata(_saleAddr);
 
-        _grantRole(OWNER_ROLE, msg.sender);
+        _grantRole(OWNER_ROLE, admin);
     }
 
     function createRound(
@@ -177,13 +179,5 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         saleAddress = IERC20Metadata(_address);
 
         emit SaleAddressUpdated(_address);
-    }
-
-    function grantOwnerRole(address account) external {
-        grantRole(OWNER_ROLE, account);
-    }
-
-    function revokeOwnerRole(address account) external {
-        revokeRole(OWNER_ROLE, account);
     }
 }
