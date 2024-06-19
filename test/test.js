@@ -1,17 +1,21 @@
 const SCHToken = artifacts.require("SCH");
+const USDTToken = artifacts.require("USDT");
 const Presale = artifacts.require("Presale");
 
 contract('test for all', async accounts => {
-    let token;
+    let schToken;
+    let usdtToken;
     let presaleContract;
 
     before(async () => {
-        token = await SCHToken.deployed();
+        schToken = await SCHToken.deployed();
+        usdtToken = await USDTToken.deployed();
         presaleContract = await Presale.deployed();
 
         console.log(accounts);
 
-        console.log("Token: ", token.address);
+        console.log("SCHToken: ", schToken.address);
+        console.log("USDTToken: ", usdtToken.address);
         console.log("Presale: ", presaleContract.address);
     })
 
