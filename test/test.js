@@ -62,7 +62,9 @@ contract('test for all', async accounts => {
         const MIN_AMOUNT = web3.utils.toBN("10");
         const PRICE = web3.utils.toBN("10000");
         const AFFILIATE_FEE = web3.utils.toBN("1000");
-        
+        const VESTING_DURATION = web3.utils.toBN(60 * 60 * 24 * 30);
+        console.log("Vesting duration: ", VESTING_DURATION.toString());
+
         flag = await presaleContract.hasRole(await presaleContract.OWNER_ROLE(), accounts[0]);
         console.log("Owner Role check", flag);
 
@@ -73,6 +75,7 @@ contract('test for all', async accounts => {
             MIN_AMOUNT,
             PRICE,
             AFFILIATE_FEE,
+            VESTING_DURATION,
             {from: accounts[0]}
         );
 
@@ -145,15 +148,24 @@ contract('test for all', async accounts => {
         console.log("Contract SCH balance: ", (await schToken.balanceOf(presaleContract.address)).toString());
         console.log("User1 SCH balance: ", (await schToken.balanceOf(accounts[1])).toString());
         console.log("User2 SCH balance: ", (await schToken.balanceOf(accounts[2])).toString());
-
+        
+        let denominator = await presaleContract.DENOMINATOR();
         let stages = await presaleContract.stages(0);
         console.log("SCH token price: ", stages.price.toString());
 
         let userDeposited = await presaleContract.userDeposited(0, accounts[1]);
-        console.log("User1 claim amount: ", userDeposited.toString());
+        let userClaimed = await presaleContract.userClaimed(0, accounts[1]);
+        let vestedAmount = userDeposited * denominator / stages.price;
+
+        console.log("User1 claimed amount: ", userClaimed.toString());
+        console.log("User1 vested amount: ", vestedAmount.toString());
 
         userDeposited = await presaleContract.userDeposited(0, accounts[2]);
-        console.log("User2 claim amount: ", userDeposited.toString());
+        userClaimed = await presaleContract.userClaimed(0, accounts[2]);
+        vestedAmount = userDeposited * denominator / stages.price;
+
+        console.log("User2 claimed amount: ", userClaimed.toString());
+        console.log("User2 vested amount: ", vestedAmount.toString());
 
         let tx = await presaleContract.claim(
             web3.utils.toBN("0"),

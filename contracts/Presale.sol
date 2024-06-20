@@ -14,6 +14,7 @@ import "./utils/ReentrancyGuardUpgradeable.sol";
 
 contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessControlUpgradeable {
     uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant MONTH = 30 days;
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
     IERC20Metadata public schAddress; // SCH token address
@@ -28,7 +29,6 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 price; // Price for SCH token, multiplied by 100 (e.g., 10000 = $1)
         uint256 affiliateFee; // Percentage fee for the affiliate, multiplied by 10000 (e.g., 5% = 500)
         uint256 vestingPeriod; // Total vesting period in seconds
-        uint256 vestingCliff; // Cliff period before vesting starts in seconds
         uint256 vestedAmount; // Total vested amount for the stage
     }
 
@@ -42,11 +42,11 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
     event Deposit(address indexed _from, uint256 indexed _stage, uint256 _amount, address indexed _affiliate);
     event Claim(address indexed _user, uint256 indexed _stage, uint256 _amount);
     event AffiliateRewardClaimed(address indexed _affiliate, uint256 _amount);
-    event RoundCreated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod, uint256 _vestingCliff);
-    event RoundUpdated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod, uint256 _vestingCliff);
+    event RoundCreated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod);
+    event RoundUpdated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod);
     event SaleAddressUpdated(address indexed _newAddress);
     event Withdrawal(address indexed _to, uint256 _amount, string _tokenType);
-    
+
     receive() external payable {
         revert("Presale: Contract does not accept native currency");
     }
@@ -78,8 +78,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _minAmount,
         uint256 _price,
         uint256 _affiliateFee,
-        uint256 _vestingPeriod,
-        uint256 _vestingCliff
+        uint256 _vestingPeriod
     ) external onlyOwners {
         stages.push(Stage({
             timeToStart: _timeToStart,
@@ -90,11 +89,10 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
             price: _price,
             affiliateFee: _affiliateFee,
             vestingPeriod: _vestingPeriod,
-            vestingCliff: _vestingCliff,
             vestedAmount: 0
         }));
 
-        emit RoundCreated(stages.length - 1, _timeToStart, _timeToEnd, _timeToClaim, _minAmount, _price, _affiliateFee, _vestingPeriod, _vestingCliff);
+        emit RoundCreated(stages.length - 1, _timeToStart, _timeToEnd, _timeToClaim, _minAmount, _price, _affiliateFee, _vestingPeriod);
     }
 
     function updateStage(
@@ -105,8 +103,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _minAmount,
         uint256 _price,
         uint256 _affiliateFee,
-        uint256 _vestingPeriod,
-        uint256 _vestingCliff
+        uint256 _vestingPeriod
     ) external onlyOwners {
         require(_stageId < stages.length, "Presale: Invalid stage ID");
 
@@ -118,9 +115,8 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         stage.price = _price;
         stage.affiliateFee = _affiliateFee;
         stage.vestingPeriod = _vestingPeriod;
-        stage.vestingCliff = _vestingCliff;
 
-        emit RoundUpdated(_stageId, _timeToStart, _timeToEnd, _timeToClaim, _minAmount, _price, _affiliateFee, _vestingPeriod, _vestingCliff);
+        emit RoundUpdated(_stageId, _timeToStart, _timeToEnd, _timeToClaim, _minAmount, _price, _affiliateFee, _vestingPeriod);
     }
 
     function deposit(uint256 _stageId, uint256 _amount, address _affiliate) external nonReentrant {
@@ -157,7 +153,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         require(vested > 0, "Presale: No vested tokens available for claim");
         
         uint256 lastClaimed = userLastClaimed[_stageId][msg.sender];
-        require(block.timestamp >= lastClaimed + 30 days, "Presale: Can only claim once per month");
+        require(block.timestamp >= lastClaimed + MONTH, "Presale: Can only claim once per month");
 
         userClaimed[_stageId][msg.sender] += vested;
         userLastClaimed[_stageId][msg.sender] = block.timestamp;
@@ -174,19 +170,15 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 vestedAmount = (deposited * DENOMINATOR) / stage.price;
         uint256 timeElapsed = block.timestamp - stage.timeToClaim;
 
-        if (timeElapsed < stage.vestingCliff) {
-            return 0;
-        }
-
         if (timeElapsed >= stage.vestingPeriod) {
             return vestedAmount - claimed;
         }
 
-        uint256 monthsElapsed = timeElapsed / 30 days;
-        uint256 totalVestingMonths = stage.vestingPeriod / 30 days;
+        uint256 monthsElapsed = timeElapsed / MONTH;
+        uint256 totalVestingMonths = stage.vestingPeriod / MONTH;
 
-        uint256 initialVesting = vestedAmount * 7 / 100;
-        uint256 monthlyVesting = vestedAmount * 93 / 100 / (totalVestingMonths - 1);
+        uint256 initialVesting = vestedAmount * 10 / 100;
+        uint256 monthlyVesting = vestedAmount * 90 / 100 / totalVestingMonths;
 
         uint256 vested = initialVesting + monthlyVesting * monthsElapsed;
 
