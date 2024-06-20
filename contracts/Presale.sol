@@ -56,19 +56,18 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
     }
 
     modifier onlyOwners() {
-        require(hasRole(OWNER_ROLE, msg.sender), "Presale: Caller is not an owner");
+        require(hasRole(OWNER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Presale: Caller is not an owner");
         _;
     }
 
-    function initialize(address _schAddr, address _saleAddr, address admin) public initializer {
+    function initialize(address _schAddr, address _saleAddr) public initializer {
         __Ownable_init();
-         __ReentrancyGuard_init();
+        __ReentrancyGuard_init();
         __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         schAddress = IERC20Metadata(_schAddr);
-        saleAddress = IERC20Metadata(_saleAddr);
-
-        _grantRole(OWNER_ROLE, admin);
+        saleAddress = IERC20Metadata(_saleAddr);        
     }
 
     function createRound(

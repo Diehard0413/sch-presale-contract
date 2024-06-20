@@ -49,7 +49,7 @@ contract('test for all', async accounts => {
     })
 
     it('Initialize presale contract', async () => {
-        await presaleContract.initialize(schToken.address, usdtToken.address, accounts[0], {from: accounts[0]});
+        await presaleContract.initialize(schToken.address, usdtToken.address, {from: accounts[0]});
     })
 
     it('Create 1st presale round', async () => {
@@ -65,7 +65,7 @@ contract('test for all', async accounts => {
         const VESTING_DURATION = web3.utils.toBN(60 * 60 * 24 * 30);
         console.log("Vesting duration: ", VESTING_DURATION.toString());
 
-        flag = await presaleContract.hasRole(await presaleContract.OWNER_ROLE(), accounts[0]);
+        flag = await presaleContract.hasRole(await presaleContract.DEFAULT_ADMIN_ROLE(), accounts[0]);
         console.log("Owner Role check", flag);
 
         let tx = await presaleContract.createRound(
@@ -204,5 +204,22 @@ contract('test for all', async accounts => {
 
         console.log("Contract SCH balance: ", (await schToken.balanceOf(presaleContract.address)).toString());
         console.log("Owner SCH balance: ", (await schToken.balanceOf(accounts[0])).toString());
+    })
+
+    it('Grant Role Check', async () => {
+        let ROLE = await presaleContract.OWNER_ROLE();
+
+        let flag = await presaleContract.hasRole(ROLE, accounts[1]);
+        console.log("User1 Role check", flag);
+
+        await presaleContract.grantRole(ROLE, accounts[1], {from: accounts[0]});
+
+        flag = await presaleContract.hasRole(ROLE, accounts[1]);
+        console.log("User1 Role check", flag);
+
+        await presaleContract.revokeRole(ROLE, accounts[1], {from: accounts[0]});
+
+        flag = await presaleContract.hasRole(ROLE, accounts[1]);
+        console.log("User1 Role check", flag);
     })
 })
