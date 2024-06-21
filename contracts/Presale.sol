@@ -28,7 +28,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 totalSale;
         uint256 price; // Price for SCH token, multiplied by 100 (e.g., 10000 = $1)
         uint256 affiliateFee; // Percentage fee for the affiliate, multiplied by 10000 (e.g., 5% = 500)
-        uint256 vestingPeriod; // Total vesting period in seconds
+        uint256 vestingPeriod; // Total Months for vesting period
         uint256 vestedAmount; // Total vested amount for the stage
     }
 
@@ -169,17 +169,15 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 vestedAmount = (deposited * DENOMINATOR) / stage.price;
         uint256 timeElapsed = block.timestamp - stage.timeToClaim;
 
-        if (timeElapsed >= stage.vestingPeriod) {
+        if (timeElapsed >= stage.timeToClaim + stage.vestingPeriod * MONTH) {
             return vestedAmount - claimed;
         }
 
         uint256 monthsElapsed = timeElapsed / MONTH;
-        uint256 totalVestingMonths = stage.vestingPeriod / MONTH;
 
-        uint256 initialVesting = vestedAmount * 10 / 100;
-        uint256 monthlyVesting = vestedAmount * 90 / 100 / totalVestingMonths;
+        uint256 monthlyVesting = vestedAmount / stage.vestingPeriod;
 
-        uint256 vested = initialVesting + monthlyVesting * monthsElapsed;
+        uint256 vested = monthlyVesting * (monthsElapsed + 1);
 
         if (vested > vestedAmount) {
             vested = vestedAmount;

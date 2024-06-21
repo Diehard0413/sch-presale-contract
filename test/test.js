@@ -62,7 +62,7 @@ contract('test for all', async accounts => {
         const MIN_AMOUNT = web3.utils.toBN("10");
         const PRICE = web3.utils.toBN("10000");
         const AFFILIATE_FEE = web3.utils.toBN("1000");
-        const VESTING_DURATION = web3.utils.toBN(60 * 60 * 24 * 30);
+        const VESTING_DURATION = web3.utils.toBN("6");
         console.log("Vesting duration: ", VESTING_DURATION.toString());
 
         flag = await presaleContract.hasRole(await presaleContract.DEFAULT_ADMIN_ROLE(), accounts[0]);
