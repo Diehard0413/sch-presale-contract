@@ -28,7 +28,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 totalSale;
         uint256 price; // Price for SCH token, multiplied by 100 (e.g., 10000 = $1)
         uint256 affiliateFee; // Percentage fee for the affiliate, multiplied by 10000 (e.g., 5% = 500)
-        uint256 vestingPeriod; // Total Months for vesting period
+        uint256 vestingPeriod; // Total months for vesting period
         uint256 vestedAmount; // Total vested amount for the stage
     }
 
