@@ -134,7 +134,7 @@ contract('test for all', async accounts => {
 
 
     it('Set interval for claim feature', async () => {
-        await sleep(60000);
+        await sleep(55000);
 
         let curTimeStamp = (new Date().getTime() / 1000).toFixed(0);
         let stages = await presaleContract.stages(0);
