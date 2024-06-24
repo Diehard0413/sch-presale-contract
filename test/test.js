@@ -59,7 +59,7 @@ contract('test for all', async accounts => {
         const START_TIME = web3.utils.toBN(CUR_TIME.toString());
         const END_TIME = web3.utils.toBN((Number(CUR_TIME) + 30).toString());
         const CLAIM_TIME = web3.utils.toBN((Number(CUR_TIME) + 60).toString());
-        const MIN_AMOUNT = web3.utils.toBN("10");
+        const MIN_AMOUNT = web3.utils.toBN("10000000");
         const PRICE = web3.utils.toBN("10000");
         const AFFILIATE_FEE = web3.utils.toBN("1000");
         const VESTING_DURATION = web3.utils.toBN("6");
@@ -95,7 +95,7 @@ contract('test for all', async accounts => {
 
         tx = await presaleContract.deposit(
             web3.utils.toBN("0"),
-            web3.utils.toBN("100"),
+            web3.utils.toBN("100000000"),
             accounts[3],
             {from: accounts[1]}
         );
@@ -110,7 +110,7 @@ contract('test for all', async accounts => {
         
         tx = await presaleContract.deposit(
             web3.utils.toBN("0"),
-            web3.utils.toBN("200"),
+            web3.utils.toBN("200000000"),
             accounts[3],
             {from: accounts[2]}
         );
@@ -134,7 +134,7 @@ contract('test for all', async accounts => {
 
 
     it('Set interval for claim feature', async () => {
-        await sleep(55000);
+        await sleep(70000);
 
         let curTimeStamp = (new Date().getTime() / 1000).toFixed(0);
         let stages = await presaleContract.stages(0);
@@ -152,18 +152,26 @@ contract('test for all', async accounts => {
         let denominator = await presaleContract.DENOMINATOR();
         let stages = await presaleContract.stages(0);
         console.log("SCH token price: ", stages.price.toString());
+        console.log("Time to claim: ", stages.timeToClaim.toString());
+        console.log("Presale duration: ", stages.vestingPeriod.toString());
+        console.log("Current timestamp: ", (new Date().getTime() / 1000).toFixed(0));
 
         let userDeposited = await presaleContract.userDeposited(0, accounts[1]);
         let userClaimed = await presaleContract.userClaimed(0, accounts[1]);
         let vestedAmount = userDeposited * denominator / stages.price;
-
+        
         console.log("User1 claimed amount: ", userClaimed.toString());
         console.log("User1 vested amount: ", vestedAmount.toString());
+        // let claimable = await presaleContract.calculateVestedAmount(
+        //     web3.utils.toBN("0"),
+        //     accounts[1]
+        // );
+        // console.log("User1 claimable amount: ", claimable.toString());
 
         userDeposited = await presaleContract.userDeposited(0, accounts[2]);
         userClaimed = await presaleContract.userClaimed(0, accounts[2]);
         vestedAmount = userDeposited * denominator / stages.price;
-
+        
         console.log("User2 claimed amount: ", userClaimed.toString());
         console.log("User2 vested amount: ", vestedAmount.toString());
 
