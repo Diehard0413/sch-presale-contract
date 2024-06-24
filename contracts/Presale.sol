@@ -26,10 +26,9 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 timeToClaim;
         uint256 minAmount; // Token amount without considering decimals
         uint256 totalSale;
-        uint256 price; // Price for SCH token, multiplied by 100 (e.g., 10000 = $1)
+        uint256 price; // Price for SCH token, multiplied by 10000 (e.g., 10000 = $1)
         uint256 affiliateFee; // Percentage fee for the affiliate, multiplied by 10000 (e.g., 5% = 500)
         uint256 vestingPeriod; // Total Months for vesting period
-        uint256 vestedAmount; // Total vested amount for the stage
     }
 
     Stage[] public stages;
@@ -87,8 +86,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
             totalSale: 0,
             price: _price,
             affiliateFee: _affiliateFee,
-            vestingPeriod: _vestingPeriod,
-            vestedAmount: 0
+            vestingPeriod: _vestingPeriod
         }));
 
         emit RoundCreated(stages.length - 1, _timeToStart, _timeToEnd, _timeToClaim, _minAmount, _price, _affiliateFee, _vestingPeriod);
@@ -124,7 +122,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         Stage storage stage = stages[_stageId];
         require(block.timestamp >= stage.timeToStart && block.timestamp <= stage.timeToEnd, "Presale: Not presale period");
         require(_amount >= stage.minAmount, "Invalid request: minimum deposit amount not met");
-        require(saleAddress.transferFrom(msg.sender, address(this), _amount * (10 ** saleAddress.decimals())), "Presale: Token transfer failed");
+        require(saleAddress.transferFrom(msg.sender, address(this), _amount), "Presale: Token transfer failed");
 
         uint256 depositAmount = _amount;
         uint256 affiliateReward = 0;
@@ -157,7 +155,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         userClaimed[_stageId][msg.sender] += vested;
         userLastClaimed[_stageId][msg.sender] = block.timestamp;
         
-        require(schAddress.transfer(msg.sender, vested * (10 ** schAddress.decimals())), "Presale: Token transfer failed");
+        require(schAddress.transfer(msg.sender, (vested / (10 ** saleAddress.decimals())) * (10 ** schAddress.decimals())), "Presale: Token transfer failed");
 
         emit Claim(msg.sender, _stageId, vested);
     }
@@ -191,7 +189,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         require(reward > 0, "Presale: No affiliate rewards");
 
         affiliateRewards[msg.sender] = 0;
-        require(saleAddress.transfer(msg.sender, reward * (10 ** saleAddress.decimals())), "Presale: Token transfer failed");
+        require(saleAddress.transfer(msg.sender, reward), "Presale: Token transfer failed");
 
         emit AffiliateRewardClaimed(msg.sender, reward);
     }
