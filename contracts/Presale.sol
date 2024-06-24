@@ -214,5 +214,9 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         saleAddress = IERC20Metadata(_address);
 
         emit SaleAddressUpdated(_address);
-    } 
+    }
+
+    function getRoundCount() public view returns (uint256) {
+        return stages.length;
+    }
 }
