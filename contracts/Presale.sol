@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "./interfaces/IAccessControl.sol";
 import "./interfaces/IERC165.sol";
-import "./interfaces/IERC20Metadata.sol";
+import "./interfaces/IERC20MetadataMetadata.sol";
 import "./libraries/AddressUpgradeable.sol";
 import "./tokens/ERC165Upgradeable.sol";
 import "./utils/AccessControlUpgradeable.sol";
@@ -31,19 +31,25 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         uint256 vestingPeriod; // Total Months for vesting period
     }
 
+    struct Affiliate {
+        uint256 amount;
+        uint256 timeStamp;
+        bool claimed;
+    }
+
     Stage[] public stages;
 
-    mapping(uint256 => mapping(address => uint256)) public userDeposited; // Stage ID => (User => Deposited Amount)
-    mapping(uint256 => mapping(address => uint256)) public userClaimed; // Stage ID => (User => Claimed amount)
-    mapping(uint256 => mapping(address => uint256)) public userLastClaimed; // Stage ID => (User => Last claimed timestamp)
-    mapping(address => uint256) public affiliateRewards;
+    mapping(uint256 => mapping(address => uint256)) public userDeposited;
+    mapping(uint256 => mapping(address => uint256)) public userClaimed;
+    mapping(uint256 => mapping(address => uint256)) public userLastClaimed;
+    mapping(address => mapping(address => Affiliate)) public affiliates;
 
-    event Deposit(address indexed _from, uint256 indexed _stage, uint256 _amount, address indexed _affiliate);
-    event Claim(address indexed _user, uint256 indexed _stage, uint256 _amount);
-    event AffiliateRewardClaimed(address indexed _affiliate, uint256 _amount);
     event RoundCreated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod);
     event RoundUpdated(uint256 indexed _stageId, uint256 _timeToStart, uint256 _timeToEnd, uint256 _timeToClaim, uint256 _minimumSCHAmount, uint256 _price, uint256 _affiliateFee, uint256 _vestingPeriod);
     event SaleAddressUpdated(address indexed _newAddress);
+    event Deposit(address indexed _from, uint256 indexed _stage, uint256 _amount, address indexed _affiliate);
+    event Claim(address indexed _user, uint256 indexed _stage, uint256 _amount, uint256 _timeStamp);
+    event AffiliateRewardClaimed(address indexed _referrer, address indexed _referree, uint256 _amount, uint256 _timeStamp);
     event Withdrawal(address indexed _to, uint256 _amount, string _tokenType);
 
     receive() external payable {
@@ -129,8 +135,21 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
 
         if (_affiliate != address(0) && _affiliate != msg.sender) {
             affiliateReward = (depositAmount * stage.affiliateFee) / DENOMINATOR;
-            affiliateRewards[_affiliate] += affiliateReward;
             depositAmount -= affiliateReward;
+            Affiliate memory affiliate = affiliates[_affiliate][msg.sender];
+            if (affiliate.amount == 0) {
+                affiliates[_affiliate][msg.sender] = Affiliate({
+                    amount: affiliateReward,
+                    timeStamp: block.timestamp,
+                    claimed: false
+                });
+            } else {
+                affiliates[_affiliate][msg.sender] = Affiliate({
+                    amount: affiliate.amount + affiliateReward,
+                    timeStamp: block.timestamp,
+                    claimed: false
+                });
+            }            
         }
 
         userDeposited[_stageId][msg.sender] += depositAmount;
@@ -157,7 +176,7 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         
         require(schAddress.transfer(msg.sender, (vested / (10 ** saleAddress.decimals())) * (10 ** schAddress.decimals())), "Presale: Token transfer failed");
 
-        emit Claim(msg.sender, _stageId, vested);
+        emit Claim(msg.sender, _stageId, vested, block.timestamp);
     }
 
     function calculateVestedAmount(uint256 _stageId, address _user) public view returns (uint256) {
@@ -184,14 +203,18 @@ contract Presale is OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessContro
         return vested - claimed;
     }
 
-    function claimAffiliateReward() external {
-        uint256 reward = affiliateRewards[msg.sender];
-        require(reward > 0, "Presale: No affiliate rewards");
+    function claimAffiliateReward(address _referrer) external {
+        Affiliate memory affiliate = affiliates[msg.sender][_referrer];
+        require(affiliate.amount > 0, "Presale: No affiliate rewards");
 
-        affiliateRewards[msg.sender] = 0;
-        require(saleAddress.transfer(msg.sender, reward), "Presale: Token transfer failed");
+        affiliates[msg.sender][_referrer] = Affiliate({
+            amount: affiliate.amount,
+            timeStamp: affiliate.timeStamp,
+            claimed: true
+        });
+        require(saleAddress.transfer(msg.sender, affiliate.amount), "Presale: Token transfer failed");
 
-        emit AffiliateRewardClaimed(msg.sender, reward);
+        emit AffiliateRewardClaimed(msg.sender, _referrer, affiliate.amount, block.timestamp);
     }
 
     function RescueFunds() external onlyOwners returns (bool) {
